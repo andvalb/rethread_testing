@@ -1,6 +1,6 @@
 [submodule "rethread"]
 	path = rethread
-	url = git@github.com:bo-on-software/rethread.git
+	url = https://github.com/bo-on-software/rethread.git
 [submodule "thirdparty/googletest"]
 	path = thirdparty/googletest
-	url = git@github.com:google/googletest.git
+	url = https://github.com/google/googletest.git
