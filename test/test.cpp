@@ -1,11 +1,8 @@
-#define BOOST_TEST_MODULE cancellation_token test
-#include <boost/test/included/unit_test.hpp>
-
-#include <test/poll.hpp>
-
 #include <rethread/cancellation_token.hpp>
 #include <rethread/condition_variable.hpp>
 #include <rethread/thread.hpp>
+
+#include <gmock/gmock.h>
 
 #include <atomic>
 #include <chrono>
@@ -14,95 +11,200 @@
 
 using namespace rethread;
 
-struct test_fixture
+class cancellation_token_mock : public cancellation_token
+{
+public:
+	MOCK_METHOD0(cancel, void());
+	MOCK_METHOD0(reset, void());
+	MOCK_CONST_METHOD0(is_cancelled, bool());
+
+	MOCK_CONST_METHOD1(do_sleep_for, void(const std::chrono::nanoseconds& duration));
+
+	MOCK_CONST_METHOD1(try_register_cancellation_handler, bool(cancellation_handler& handler));
+	MOCK_CONST_METHOD0(try_unregister_cancellation_handler, bool());
+	MOCK_CONST_METHOD0(unregister_cancellation_handler, void());
+};
+
+
+class cancellation_handler_mock : public cancellation_handler
+{
+public:
+	MOCK_METHOD0(cancel, void());
+	MOCK_METHOD0(reset, void());
+};
+
+using ::testing::InSequence;
+using ::testing::MockFunction;
+using ::testing::Return;
+using ::testing::_;
+
+TEST(cancellation_guard_test, basic)
+{
+	cancellation_token_mock token;
+	cancellation_handler_mock handler;
+
+	EXPECT_CALL(token, try_register_cancellation_handler(_))
+		.WillOnce(Return(false));
+
+	cancellation_guard guard(token, handler);
+	EXPECT_TRUE(guard.is_cancelled());
+}
+
+
+TEST(cancellation_guard_test, try_unregister)
+{
+	cancellation_token_mock token;
+	cancellation_handler_mock handler;
+
+	{
+		InSequence seq;
+		EXPECT_CALL(token, try_register_cancellation_handler(_))
+			.WillOnce(Return(true));
+		EXPECT_CALL(token, try_unregister_cancellation_handler())
+			.WillOnce(Return(true));
+	}
+
+	cancellation_guard guard(token, handler);
+	EXPECT_FALSE(guard.is_cancelled());
+}
+
+
+TEST(cancellation_guard_test, unregister)
+{
+	cancellation_token_mock token;
+	cancellation_handler_mock handler;
+
+	{
+		InSequence seq;
+		EXPECT_CALL(token, try_register_cancellation_handler(_))
+			.WillOnce(Return(true));
+		EXPECT_CALL(token, try_unregister_cancellation_handler())
+			.WillOnce(Return(false));
+		EXPECT_CALL(token, unregister_cancellation_handler())
+			.Times(1);
+	}
+
+	cancellation_guard guard(token, handler);
+	EXPECT_FALSE(guard.is_cancelled());
+}
+
+
+TEST(cancellation_token, handler_cancel_test)
+{
+	cancellation_token_impl token;
+	cancellation_handler_mock handler;
+
+	{
+		InSequence seq;
+
+		EXPECT_CALL(handler, cancel()).Times(1);
+		EXPECT_CALL(handler, reset()).Times(1);
+	}
+
+	cancellation_guard guard(token, handler);
+	EXPECT_FALSE(guard.is_cancelled());
+	token.cancel();
+	EXPECT_TRUE(token.is_cancelled());
+}
+
+
+struct cancellation_token_fixture : public ::testing::Test
 {
 	std::mutex              _mutex;
 	std::condition_variable _cv;
 	cancellation_token_impl _token;
 	std::atomic<bool>       _finished_flag{false};
-	rethread::thread        _thread;
-
-	test_fixture() = default;
-
-	template<class Function>
-	test_fixture(Function&& f)
-	{ _thread = rethread::thread(std::forward<Function>(f), std::ref(*this)); }
 };
 
 
-BOOST_AUTO_TEST_CASE(cancellation_token_basics_test)
+TEST_F(cancellation_token_fixture, basic_thread_test)
 {
-	test_fixture f;
-	std::thread t([&f] ()
+	std::thread t([this] ()
 	{
-		while (f._token)
+		while (_token)
 			std::this_thread::sleep_for(std::chrono::milliseconds(20));
-		f._finished_flag = true;
+		_finished_flag = true;
 	});
 
-	BOOST_REQUIRE(!f._finished_flag);
+	EXPECT_FALSE(_finished_flag);
 
-	f._token.cancel();
+	_token.cancel();
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	BOOST_REQUIRE(f._finished_flag);
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	EXPECT_TRUE(_finished_flag);
 
 	t.join();
 }
 
 
-BOOST_AUTO_TEST_CASE(thread_test)
+TEST_F(cancellation_token_fixture, thread_reset_test)
 {
-	test_fixture f([] (const cancellation_token& t, test_fixture& f)
+	rethread::thread t([this] (const cancellation_token& t)
 	{
 		while (t)
 			std::this_thread::sleep_for(std::chrono::milliseconds(20));
-		f._finished_flag = true;
+		_finished_flag = true;
 	});
 
-	BOOST_REQUIRE(!f._finished_flag);
-	f._thread.reset();
-	BOOST_REQUIRE(f._finished_flag);
+	EXPECT_FALSE(_finished_flag);
+	t.reset();
+	EXPECT_TRUE(_finished_flag);
 }
 
 
-BOOST_AUTO_TEST_CASE(cv_test)
+TEST_F(cancellation_token_fixture, thread_dtor_test)
 {
-	test_fixture f([] (const cancellation_token&, test_fixture& f)
 	{
-		std::unique_lock<std::mutex> l(f._mutex);
-		while (f._token)
-			wait(f._cv, l, f._token);
-		f._finished_flag = true;
-	});
+		rethread::thread t([this] (const cancellation_token& t)
+		{
+			while (t)
+				std::this_thread::sleep_for(std::chrono::milliseconds(20));
+			_finished_flag = true;
+		});
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	BOOST_REQUIRE(!f._finished_flag);
-
-	f._token.cancel();
-
-	std::this_thread::sleep_for(std::chrono::milliseconds(1));
-	BOOST_REQUIRE(f._finished_flag);
+		EXPECT_FALSE(_finished_flag);
+	}
+	EXPECT_TRUE(_finished_flag);
 }
 
 
-BOOST_AUTO_TEST_CASE(sleep_test)
+TEST_F(cancellation_token_fixture, cv_test)
 {
-	test_fixture f([] (const cancellation_token&, test_fixture& f)
+	rethread::thread t([this] (const cancellation_token&)
 	{
-		std::unique_lock<std::mutex> l(f._mutex);
-		while (f._token)
-			rethread::this_thread::sleep_for(std::chrono::minutes(1), f._token);
-		f._finished_flag = true;
+		std::unique_lock<std::mutex> l(_mutex);
+		while (_token)
+			wait(_cv, l, _token);
+		_finished_flag = true;
 	});
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	BOOST_REQUIRE(!f._finished_flag);
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	EXPECT_FALSE(_finished_flag);
 
-	f._token.cancel();
+	_token.cancel();
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(1));
-	BOOST_REQUIRE(f._finished_flag);
+	EXPECT_TRUE(_finished_flag);
+}
+
+
+TEST_F(cancellation_token_fixture, sleep_test)
+{
+	rethread::thread t([this] (const cancellation_token&)
+	{
+		std::unique_lock<std::mutex> l(_mutex);
+		while (_token)
+			rethread::this_thread::sleep_for(std::chrono::minutes(1), _token);
+		_finished_flag = true;
+	});
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	EXPECT_FALSE(_finished_flag);
+
+	_token.cancel();
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	EXPECT_TRUE(_finished_flag);
 }
 
 
@@ -123,9 +225,9 @@ struct cancellation_delay_tester : cancellation_handler
 
 	~cancellation_delay_tester()
 	{
-		BOOST_REQUIRE(!_guard_cancelled);
-		BOOST_REQUIRE(!_cancelled);
-		BOOST_REQUIRE(!_reset);
+		EXPECT_FALSE(_guard_cancelled);
+		EXPECT_FALSE(_cancelled);
+		EXPECT_FALSE(_reset);
 
 		_token.cancel();
 		_alive = false;
@@ -133,13 +235,13 @@ struct cancellation_delay_tester : cancellation_handler
 
 		if (!_guard_cancelled)
 		{
-			BOOST_REQUIRE(_cancelled);
-			BOOST_REQUIRE(_reset);
+			EXPECT_TRUE(_cancelled);
+			EXPECT_TRUE(_reset);
 		}
 		else
 		{
-			BOOST_REQUIRE(!_cancelled);
-			BOOST_REQUIRE(!_reset);
+			EXPECT_FALSE(_cancelled);
+			EXPECT_FALSE(_reset);
 		}
 	}
 
@@ -162,7 +264,7 @@ struct cancellation_delay_tester : cancellation_handler
 };
 
 
-BOOST_AUTO_TEST_CASE(cancellation_delay_test)
+TEST(cancellation_token, delay_test)
 {
 	const std::chrono::microseconds MaxDelay{100000};
 	const std::chrono::microseconds DelayStep{200};
@@ -171,5 +273,14 @@ BOOST_AUTO_TEST_CASE(cancellation_delay_test)
 		cancellation_delay_tester t(delay);
 		std::this_thread::sleep_for(MaxDelay - delay);
 	}
+}
+
+
+int main(int argc, char** argv)
+{
+	// The following line must be executed to initialize Google Mock
+	// (and Google Test) before running the tests.
+	::testing::InitGoogleMock(&argc, argv);
+	return RUN_ALL_TESTS();
 }
 
