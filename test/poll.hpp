@@ -6,19 +6,47 @@
 #include <rethread/poll.hpp>
 #include <rethread/thread.hpp>
 
-#include <boost/scope_exit.hpp>
+#include <gtest/gtest.h>
 
 #include <exception>
 
-BOOST_AUTO_TEST_CASE(poll_test)
+template <typename Func>
+class scope_exit_holder
+{
+private:
+	bool _valid;
+	Func _f;
+
+public:
+	scope_exit_holder(Func f) :
+		_valid(true), _f(std::move(f))
+	{ }
+
+	scope_exit_holder(scope_exit_holder&& other) :
+		_valid(other._valid), _f(std::move(other._f))
+	{ other._valid = false; }
+
+	~scope_exit_holder()
+	{
+		if (_valid)
+			_f();
+	}
+};
+
+
+template <typename Func>
+scope_exit_holder<Func> scope_exit(Func f)
+{ return scope_exit_holder<Func>(std::move(f)); }
+
+
+TEST(helpers, poll)
 {
 	using namespace rethread;
 
 	int pipe[2];
 	RETHREAD_CHECK(::pipe(pipe) == 0, std::system_error(errno, std::system_category()));
 
-	BOOST_SCOPE_EXIT_ALL(&pipe)
-	{ RETHREAD_CHECK(::close(pipe[0]) == 0 || ::close(pipe[1]) == 0, std::system_error(errno, std::system_category())); };
+	auto scope_guard = scope_exit([&pipe] { RETHREAD_CHECK(::close(pipe[0]) == 0 || ::close(pipe[1]) == 0, std::system_error(errno, std::system_category())); } );
 
 	std::atomic<bool> started{false}, readData{false}, finished{false};
 
@@ -40,21 +68,21 @@ BOOST_AUTO_TEST_CASE(poll_test)
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
-	BOOST_REQUIRE(started);
-	BOOST_REQUIRE(!readData);
-	BOOST_REQUIRE(!finished);
+	EXPECT_TRUE(started);
+	EXPECT_FALSE(readData);
+	EXPECT_FALSE(finished);
 
 	char dummy = 0;
 	RETHREAD_CHECK(::write(pipe[1], &dummy, 1) == 1, std::runtime_error("Can't write data!"));
 	std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
-	BOOST_REQUIRE(readData);
-	BOOST_REQUIRE(!finished);
+	EXPECT_TRUE(readData);
+	EXPECT_FALSE(finished);
 
 	t.reset();
 	std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
-	BOOST_REQUIRE(finished);
+	EXPECT_TRUE(finished);
 }
 
 #endif

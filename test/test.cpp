@@ -1,3 +1,5 @@
+#include <test/poll.hpp>
+
 #include <rethread/cancellation_token.hpp>
 #include <rethread/condition_variable.hpp>
 #include <rethread/thread.hpp>
