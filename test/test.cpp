@@ -1,4 +1,6 @@
+#if defined(RETHREAD_HAS_POLL)
 #include <test/poll.hpp>
+#endif
 
 #include <rethread/cancellation_token.hpp>
 #include <rethread/condition_variable.hpp>

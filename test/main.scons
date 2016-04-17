@@ -27,19 +27,21 @@ if GetOption('analyze'):
 	env['ENV'].update(x for x in os.environ.items() if x[0].startswith('CCC_'))
 
 env.Append(CPPPATH = ['#', '#/rethread', '#/thirdparty/googletest/googletest/include', '#/thirdparty/googletest/googlemock/include'])
+forced_includes = GetAbsolutePaths(Split('helgrind_annotations.h'))
 
-compiler = os.path.basename(env['CXX'])
+compiler = os.path.basename(env.subst(env['CXX']))
 if compiler.startswith('g++') or compiler.startswith('clang') or compiler.startswith('c++-analyzer'):
 	env.Append(CPPFLAGS = Split('-std=c++11 -ggdb -Werror=all -Werror=extra -Werror=pedantic -pedantic -pedantic-errors'))
+	env.Append(CPPFLAGS = list(chain(map(lambda f: ['-include', f], forced_includes))))
+	env.Append(CPPDEFINES = 'RETHREAD_HAS_POLL')
 	env.Append(LINKFLAGS = Split('-pthread'))
 	if GetOption('sanitize'):
 		env.Append(CPPFLAGS = ['-fsanitize=' + GetOption('sanitize')])
 		env.Append(LINKFLAGS = ['-fsanitize=' + GetOption('sanitize')])
+elif compiler.startswith('cl'):
+	env.Append(CPPFLAGS = Split('-EHsc'))
 else:
 	raise RuntimeError('Unknown compiler: {}'.format(compiler))
-
-forced_includes = GetAbsolutePaths(Split('helgrind_annotations.h'))
-env.Append(CPPFLAGS = list(chain(map(lambda f: ['-include', f], forced_includes))))
 
 source_files = Split('test.cpp')
 object_files = env.Object(source_files)
