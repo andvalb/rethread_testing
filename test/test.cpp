@@ -5,6 +5,7 @@
 #include <rethread/cancellation_token.hpp>
 #include <rethread/condition_variable.hpp>
 #include <rethread/thread.hpp>
+#include <rethread/cancellation_token.hpp>
 
 #include <gmock/gmock.h>
 
@@ -25,8 +26,8 @@ public:
 	MOCK_CONST_METHOD1(do_sleep_for, void(const std::chrono::nanoseconds& duration));
 
 	MOCK_CONST_METHOD1(try_register_cancellation_handler, bool(cancellation_handler& handler));
-	MOCK_CONST_METHOD0(try_unregister_cancellation_handler, bool());
-	MOCK_CONST_METHOD0(unregister_cancellation_handler, void());
+	MOCK_CONST_METHOD1(try_unregister_cancellation_handler, bool(cancellation_handler&));
+	MOCK_CONST_METHOD1(unregister_cancellation_handler, void(cancellation_handler&));
 };
 
 
@@ -64,7 +65,7 @@ TEST(cancellation_guard_test, try_unregister)
 		InSequence seq;
 		EXPECT_CALL(token, try_register_cancellation_handler(_))
 			.WillOnce(Return(true));
-		EXPECT_CALL(token, try_unregister_cancellation_handler())
+		EXPECT_CALL(token, try_unregister_cancellation_handler(_))
 			.WillOnce(Return(true));
 	}
 
@@ -82,9 +83,9 @@ TEST(cancellation_guard_test, unregister)
 		InSequence seq;
 		EXPECT_CALL(token, try_register_cancellation_handler(_))
 			.WillOnce(Return(true));
-		EXPECT_CALL(token, try_unregister_cancellation_handler())
+		EXPECT_CALL(token, try_unregister_cancellation_handler(_))
 			.WillOnce(Return(false));
-		EXPECT_CALL(token, unregister_cancellation_handler())
+		EXPECT_CALL(token, unregister_cancellation_handler(_))
 			.Times(1);
 	}
 
