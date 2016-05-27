@@ -35,6 +35,13 @@ if compiler.startswith('g++') or compiler.startswith('clang') or compiler.starts
 	env.Append(CPPDEFINES = 'RETHREAD_HAS_POLL')
 	env.Append(LINKFLAGS = Split('-pthread'))
 
+	if GetOption('build_type') == 'Debug':
+		env.Append(CPPFLAGS = Split('-ggdb -fno-omit-frame-pointer'))
+	elif GetOption('build_type') == 'Release':
+		env.Append(CPPFLAGS = Split('-O2'))
+	else:
+		raise RuntimeError('Unknown build type: {}'.format(GetOption('build_type')))
+
 	if GetOption('sanitize'):
 		env.Append(CPPFLAGS = ['-fsanitize=' + GetOption('sanitize')])
 		env.Append(LINKFLAGS = ['-fsanitize=' + GetOption('sanitize')])
