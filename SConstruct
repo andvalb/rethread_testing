@@ -58,5 +58,5 @@ for f in forced_includes:
 test_runner = env.Program('test_runner', object_files, LIBS = [buildGoogleTest(env)])
 env.Default(test_runner)
 
-test_execution = env.Command('test', None, test_runner[0].abspath)
-env.Depends(test_execution, test_runner)
+test_execution = env.Alias('test', [test_runner], test_runner[0].abspath)
+AlwaysBuild(test_execution)
