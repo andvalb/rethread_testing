@@ -4,10 +4,18 @@ from itertools import chain
 def GetAbsolutePaths(filenames):
 	return map(lambda f: File(f).abspath, filenames)
 
+dependency_install_prefix = Dir('#/build/install').abspath
+
 def buildGoogleTest(env):
 	env.Append(CPPPATH = ['#/thirdparty/googletest/googletest/include', '#/thirdparty/googletest/googlemock/include', '#/thirdparty/googletest/googletest', '#/thirdparty/googletest/googlemock'])
 	googletest_files = Split('#/thirdparty/googletest/googletest/src/gtest-all.cc #/thirdparty/googletest/googlemock/src/gmock-all.cc')
 	return env.StaticLibrary(googletest_files)
+
+def buildGoogleBenchmark(env):
+	return env.Command(
+		os.path.join(dependency_install_prefix, 'lib/libbenchmark.a'),
+		None, [Mkdir('build/thirdparty/benchmark'),
+			   'cd build/thirdparty/benchmark && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../../install/ ../../../thirdparty/benchmark/ && make && make install'])
 
 # Build script options
 AddOption('--build-type', dest='build_type', default='Release', metavar='BUILD_TYPE', help='Build type = {Debug, Release}')
@@ -25,6 +33,9 @@ if GetOption('analyze'):
 	env['CC'] = os.getenv('CC')
 	env['CXX'] = os.getenv('CXX')
 	env['ENV'].update(x for x in os.environ.items() if x[0].startswith('CCC_'))
+
+env.Append(CPPPATH = ['#', '#/rethread', os.path.join(dependency_install_prefix, 'include')])
+env.Append(LIBPATH = [os.path.join(dependency_install_prefix, 'lib')])
 
 forced_includes = GetAbsolutePaths(Split('#/test/helgrind_annotations.h'))
 
@@ -60,3 +71,11 @@ env.Default(test_runner)
 
 test_execution = env.Alias('test', [test_runner], test_runner[0].abspath)
 AlwaysBuild(test_execution)
+
+benchmark_env = env.Clone()
+benchmark_env.Append(CPPDEFINES = 'RETHREAD_SUPPRESS_CHECKS')
+benchmark_runner = benchmark_env.Program('benchmark_runner', 'benchmark/benchmark.cpp', LIBS = [buildGoogleBenchmark(benchmark_env)])
+benchmark_env.Default(benchmark_runner)
+
+benchmark_execution = benchmark_env.Alias('benchmark', [benchmark_runner], benchmark_runner[0].abspath)
+AlwaysBuild(benchmark_execution)
