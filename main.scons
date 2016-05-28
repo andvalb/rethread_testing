@@ -17,7 +17,7 @@ def buildGoogleBenchmark(env):
 			   'cd build/thirdparty/benchmark && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../../install/ ../../../thirdparty/benchmark/ && make && make install'])
 
 # Build script options
-AddOption('--build-type', dest='build_type', default='Release', metavar='BUILD_TYPE', help='Build type = {Debug, Release}')
+AddOption('--build-type', dest='build_type', default='Release', metavar='BUILD_TYPE', help='Build type = {Debug, Release, RelWithDebInfo}')
 AddOption('--compiler', dest='compiler', metavar='COMPILER', help='Compiler = g++, clang++, etc.')
 AddOption('--sanitize', dest='sanitize', metavar='TYPE', help='Clang sanitizer = {thread, address, undefined, ...}')
 AddOption('--analyze', dest='analyze', action='store_true', default=False, help='Allow static analyzer by passing some environment variables to compiler')
@@ -50,6 +50,8 @@ if compiler.startswith('g++') or compiler.startswith('clang') or compiler.starts
 		env.Append(CPPFLAGS = Split('-ggdb -fno-omit-frame-pointer'))
 	elif GetOption('build_type') == 'Release':
 		env.Append(CPPFLAGS = Split('-O2'))
+	elif GetOption('build_type') == 'RelWithDebInfo':
+		env.Append(CPPFLAGS = Split('-ggdb -fno-omit-frame-pointer -O2'))
 	else:
 		raise RuntimeError('Unknown build type: {}'.format(GetOption('build_type')))
 
