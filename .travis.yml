@@ -15,3 +15,4 @@ script:
   - scons --compiler=`which $CXX` --build-type=Debug test
   - valgrind --suppressions=etc/valgrind.suppressions --tool=helgrind --gen-suppressions=all --error-exitcode=1 --read-var-info=yes ./build/test_runner
   - valgrind --suppressions=etc/valgrind.suppressions --tool=memcheck --leak-check=full --gen-suppressions=all --error-exitcode=1 --read-var-info=yes ./build/test_runner
+  - scons --compiler=`which $CXX` --build-type=RelWithDebInfo benchmark
