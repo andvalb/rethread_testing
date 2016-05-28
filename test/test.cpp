@@ -188,7 +188,7 @@ TEST_F(cancellation_token_fixture, cv_test)
 
 	_token.cancel();
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	EXPECT_TRUE(_finished_flag);
 }
 
@@ -208,7 +208,7 @@ TEST_F(cancellation_token_fixture, sleep_test)
 
 	_token.cancel();
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	EXPECT_TRUE(_finished_flag);
 }
 
