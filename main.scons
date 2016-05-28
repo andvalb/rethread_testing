@@ -1,5 +1,4 @@
 import os
-from itertools import chain
 
 def GetAbsolutePaths(filenames):
 	return map(lambda f: File(f).abspath, filenames)
@@ -37,14 +36,15 @@ if GetOption('analyze'):
 env.Append(CPPPATH = ['#', '#/rethread', os.path.join(dependency_install_prefix, 'include')])
 env.Append(LIBPATH = [os.path.join(dependency_install_prefix, 'lib')])
 
-forced_includes = GetAbsolutePaths(Split('#/test/helgrind_annotations.h'))
+add_forced_include = lambda env, include: None
 
 compiler = os.path.basename(env.subst(env['CXX']))
 if compiler.startswith('g++') or compiler.startswith('clang') or compiler.startswith('c++-analyzer'):
 	env.Append(CPPFLAGS = Split('-std=c++11 -Werror=all -Werror=extra -Werror=pedantic -pedantic -pedantic-errors'))
-	env.Append(CPPFLAGS = list(chain(map(lambda f: ['-include', f], forced_includes))))
 	env.Append(CPPDEFINES = 'RETHREAD_HAS_POLL')
 	env.Append(LINKFLAGS = Split('-pthread'))
+
+	add_forced_include = lambda env, include: env.Append(CPPFLAGS = ['-include', include])
 
 	if GetOption('build_type') == 'Debug':
 		env.Append(CPPFLAGS = Split('-ggdb -fno-omit-frame-pointer'))
@@ -61,10 +61,14 @@ elif compiler.startswith('cl'):
 else:
 	raise RuntimeError('Unknown compiler: {}'.format(compiler))
 
+conf = Configure(env)
+if conf.CheckHeader('valgrind/helgrind.h'):
+	conf.env.Append(CPPDEFINES = 'RETHREAD_USE_HELGRIND_ANNOTATIONS')
+	add_forced_include(env, File('#/test/helgrind_annotations.h').abspath)
+env = conf.Finish()
+
 source_files = Split('test/test.cpp')
 object_files = env.Object(source_files)
-for f in forced_includes:
-	object_files = env.Depends(object_files, f)
 
 test_runner = env.Program('test_runner', object_files, LIBS = [buildGoogleTest(env)])
 env.Default(test_runner)
