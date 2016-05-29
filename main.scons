@@ -64,6 +64,8 @@ elif compiler.startswith('cl'):
 else:
 	raise RuntimeError('Unknown compiler: {}'.format(compiler))
 
+benchmark_env = env.Clone()
+
 conf = Configure(env)
 if conf.CheckHeader('valgrind/helgrind.h'):
 	conf.env.Append(CPPDEFINES = 'RETHREAD_USE_HELGRIND_ANNOTATIONS')
@@ -79,7 +81,6 @@ env.Default(test_runner)
 test_execution = env.Alias('test', [test_runner], test_runner[0].abspath)
 AlwaysBuild(test_execution)
 
-benchmark_env = env.Clone()
 benchmark_env.Append(CPPDEFINES = 'RETHREAD_SUPPRESS_CHECKS')
 gbenchmark_lib = buildGoogleBenchmark(benchmark_env)
 benchmark_runner = benchmark_env.Program('benchmark_runner', 'benchmark/benchmark.cpp', LIBS = [gbenchmark_lib])
