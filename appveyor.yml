@@ -8,9 +8,10 @@ environment:
     MSVC_DEFAULT_OPTIONS: ON
     PYTHON: "C:\\Python27"
 
-before_build:
+install:
   - SET "PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
   - easy_install scons
+  - git submodule update --init --recursive
 
 build_script:
   - scons.py
