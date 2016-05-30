@@ -9,6 +9,87 @@
 #include <condition_variable>
 
 
+static void ConcurrentQueue(benchmark::State& state)
+{
+	std::mutex m;
+	std::condition_variable empty_cond;
+	std::condition_variable full_cond;
+	bool has_object = false;
+	bool done = false;
+	std::thread t([&] ()
+	{
+		std::unique_lock<std::mutex> l(m);
+		while (!done)
+		{
+			while (has_object)
+			{
+				full_cond.wait(l);
+				continue;
+			}
+			has_object = true;
+			empty_cond.notify_all();
+		}
+	});
+
+	std::unique_lock<std::mutex> l(m);
+	while (state.KeepRunning())
+	{
+		while (!has_object)
+		{
+			empty_cond.wait_for(l, std::chrono::milliseconds(100));
+			continue;
+		}
+		has_object = false;
+		full_cond.notify_all();
+	}
+	done = true;
+	l.unlock();
+
+	t.join();
+}
+BENCHMARK(ConcurrentQueue);
+
+
+static void CancellableConcurrentQueue(benchmark::State& state)
+{
+	std::mutex m;
+	std::condition_variable empty_cond;
+	std::condition_variable full_cond;
+	bool has_object = false;
+	rethread::thread t([&] (const rethread::cancellation_token& t)
+	              {
+		              std::unique_lock<std::mutex> l(m);
+		              while (t)
+		              {
+			              while (t && has_object)
+			              {
+				              rethread::wait(full_cond, l, t);
+				              continue;
+			              }
+			              has_object = true;
+			              empty_cond.notify_all();
+		              }
+	              });
+
+	rethread::cancellation_token_atomic token;
+	std::unique_lock<std::mutex> l(m);
+	while (state.KeepRunning())
+	{
+		while (!has_object)
+		{
+			rethread::wait(empty_cond, l, token);
+			continue;
+		}
+		has_object = false;
+		full_cond.notify_all();
+	}
+	l.unlock();
+
+	t.reset();
+}
+BENCHMARK(CancellableConcurrentQueue);
+
+
 struct mutex_mock
 {
 	void lock()   { }
