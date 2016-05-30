@@ -1,4 +1,5 @@
 import os
+import distutils.spawn
 
 def GetAbsolutePaths(filenames):
 	return map(lambda f: File(f).abspath, filenames)
@@ -10,12 +11,17 @@ def buildGoogleTest(env):
 	googletest_files = Split('#/thirdparty/googletest/googletest/src/gtest-all.cc #/thirdparty/googletest/googlemock/src/gmock-all.cc')
 	return env.StaticLibrary(googletest_files)
 
+def find_executable(executable, env):
+	return distutils.spawn.find_executable(executable, env['ENV']['PATH'])
+
 def buildGoogleBenchmark(env):
 	new_env = env.Clone(ENV = os.environ) # we need to pass all the environment variables to CMake
+	new_env['CC_ABSOLUTE'] = find_executable(new_env['CC'], new_env)
+	new_env['CXX_ABSOLUTE'] = find_executable(new_env['CXX'], new_env)
 	return new_env.Command(
 		os.path.join(dependency_install_prefix, 'lib', new_env['LIBPREFIX'] + 'benchmark' + new_env['LIBSUFFIX']),
 		None, [Mkdir('build/thirdparty/benchmark'),
-			   'cd build/thirdparty/benchmark/ && cmake$PROGSUFFIX -DCMAKE_C_COMPILER="$CC" -DCMAKE_C_FLAGS="$CCFLAGS" -DCMAKE_CXX_COMPILER="$CXX" -DCMAKE_CXX_FLAGS="$CPPFLAGS" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../../install/ ../../../thirdparty/benchmark/ && cmake$PROGSUFFIX --build . --target install'])
+			   'cd build/thirdparty/benchmark/ && cmake$PROGSUFFIX -DCMAKE_C_COMPILER="$CC_ABSOLUTE" -DCMAKE_C_FLAGS="$CCFLAGS" -DCMAKE_CXX_COMPILER="$CXX_ABSOLUTE" -DCMAKE_CXX_FLAGS="$CPPFLAGS" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../../install/ ../../../thirdparty/benchmark/ && cmake$PROGSUFFIX --build . --target install'])
 
 # Build script options
 AddOption('--build-type', dest='build_type', default='Release', metavar='BUILD_TYPE', help='Build type = {Debug, Release, RelWithDebInfo}')
@@ -33,6 +39,7 @@ if GetOption('analyze'):
 	env['CC'] = os.getenv('CC')
 	env['CXX'] = os.getenv('CXX')
 	env['ENV'].update(x for x in os.environ.items() if x[0].startswith('CCC_'))
+
 
 env.Append(CPPPATH = ['#', '#/rethread', os.path.join(dependency_install_prefix, 'include')])
 env.Append(LIBPATH = [os.path.join(dependency_install_prefix, 'lib')])
