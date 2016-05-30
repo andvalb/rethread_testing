@@ -96,7 +96,7 @@ TEST(cancellation_guard_test, unregister)
 
 TEST(cancellation_token, handler_cancel_test)
 {
-	cancellation_token_impl token;
+	cancellation_token_atomic token;
 	cancellation_handler_mock handler;
 
 	{
@@ -115,10 +115,10 @@ TEST(cancellation_token, handler_cancel_test)
 
 struct cancellation_token_fixture : public ::testing::Test
 {
-	std::mutex              _mutex;
-	std::condition_variable _cv;
-	cancellation_token_impl _token;
-	std::atomic<bool>       _finished_flag{false};
+	std::mutex                _mutex;
+	std::condition_variable   _cv;
+	cancellation_token_atomic _token;
+	std::atomic<bool>         _finished_flag{false};
 };
 
 
@@ -216,7 +216,7 @@ TEST_F(cancellation_token_fixture, sleep_test)
 struct cancellation_delay_tester : cancellation_handler
 {
 	std::chrono::microseconds _check_delay;
-	cancellation_token_impl   _token;
+	cancellation_token_atomic _token;
 	std::thread               _thread;
 	std::atomic<bool>         _alive{true};
 
