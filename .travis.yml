@@ -2,17 +2,23 @@ sudo: required
 dist: trusty
 language: cpp
 cache: apt
+
 compiler:
   - gcc
   - clang
+
+env:
+  - BUILD_TYPE=Debug
+  - BUILD_TYPE=Release
+  - BUILD_TYPE=RelWithDebInfo
 
 addons:
   apt:
     packages:
       - valgrind
 
-script: 
-  - scons --compiler=`which $CXX` --build-type=Debug test
-  - valgrind --suppressions=etc/valgrind.suppressions --tool=helgrind --gen-suppressions=all --error-exitcode=1 --read-var-info=yes ./build/test_runner
+script:
+  - scons --compiler=`which $CXX` --build-type=$BUILD_TYPE test
+  - if [[ "$BUILD_TYPE" == "Debug" ]]; then valgrind --suppressions=etc/valgrind.suppressions --tool=helgrind --gen-suppressions=all --error-exitcode=1 --read-var-info=yes ./build/test_runner; fi
   - valgrind --suppressions=etc/valgrind.suppressions --tool=memcheck --leak-check=full --gen-suppressions=all --error-exitcode=1 --read-var-info=yes ./build/test_runner
-  - scons --compiler=`which $CXX` --build-type=RelWithDebInfo benchmark
+  - if [[ "$BUILD_TYPE" == "Release" ]]; then scons --compiler=`which $CXX` --build-type=RelWithDebInfo benchmark; fi
