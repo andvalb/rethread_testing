@@ -67,7 +67,14 @@ if compiler.startswith('g++') or compiler.startswith('clang') or compiler.starts
 		env.Append(CPPFLAGS = ['-fsanitize=' + GetOption('sanitize')])
 		env.Append(LINKFLAGS = ['-fsanitize=' + GetOption('sanitize')])
 elif compiler.startswith('cl'):
-	env.Append(CPPFLAGS = Split('-EHsc'))
+	if env['BUILD_TYPE'] == 'Debug':
+		env.Append(CPPFLAGS = Split('-Zi -nologo -W4 -WX- -Od -Ob0 -Oy- -DWIN32 -D_WINDOWS -D_DEBUG -D_MBCS -Gm- -EHsc -RTC1 -MDd -GS -fp:precise -Zc:wchar_t -Zc:forScope -Zc:inline -GR -Gd -TP'))
+	elif env['BUILD_TYPE'] == 'Release':
+		env.Append(CPPFLAGS = Split('-nologo -W3 -WX- -O2 -Ob2 -Oy- -DWIN32 -D_WINDOWS -DNDEBUG -D_MBCS -Gm- -EHsc -MD -GS -fp:precise -Zc:wchar_t -Zc:forScope -Zc:inline -Gd -TP'))
+	elif env['BUILD_TYPE'] == 'RelWithDebInfo':
+		env.Append(CPPFLAGS = Split('-Zi -nologo -W3 -WX- -O2 -Ob1 -Oy- -DWIN32 -D_WINDOWS -DNDEBUG -D_MBCS -Gm- -EHsc -MD -GS -fp:precise -Zc:wchar_t -Zc:forScope -Zc:inline -GR -Gd -TP'))
+	else:
+		raise RuntimeError('Unknown build type: {}'.format(env['BUILD_TYPE']))
 else:
 	raise RuntimeError('Unknown compiler: {}'.format(compiler))
 
