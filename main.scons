@@ -56,20 +56,18 @@ def buildGoogleBenchmark(env):
 		result += ['Shlwapi.lib']
 	return result
 
-# Build script options
-AddOption('--build-type', dest='build_type', default='Release', metavar='BUILD_TYPE', help='Build type = {Debug, Release, RelWithDebInfo}')
-AddOption('--compiler', dest='compiler', metavar='COMPILER', help='Compiler = g++, clang++, etc.')
-AddOption('--sanitize', dest='sanitize', metavar='TYPE', help='Clang sanitizer = {thread, address, undefined, ...}')
-AddOption('--analyze', dest='analyze', action='store_true', default=False, help='Allow static analyzer by passing some environment variables to compiler')
+vars = Variables(None, ARGUMENTS)
+vars.AddVariables(
+	EnumVariable('BUILD_TYPE', 'Build type', 'Release', allowed_values = ('Debug', 'Release', 'RelWithDebInfo')),
+	('CXX', 'C++ compiler'),
+	('CLANG_SANITIZE', 'Clang sanitizer to use (thread|address|undefined|...)'),
+	BoolVariable('CLANG_ANALYZE', 'Allow static analyzer by passing some environment variables to compiler', False)
+)
 
-env_params = {}
-if GetOption('compiler'):
-	env_params['CXX'] = GetOption('compiler')
-env_params['BUILD_TYPE'] = GetOption('build_type')
+env = Environment(variables = vars)
+Help(vars.GenerateHelpText(env))
 
-env = Environment(**env_params)
-
-if GetOption('analyze'):
+if env['CLANG_ANALYZE']:
 	env['CC'] = os.getenv('CC')
 	env['CXX'] = os.getenv('CXX')
 	env['ENV'].update(x for x in os.environ.items() if x[0].startswith('CCC_'))
@@ -96,9 +94,9 @@ if compiler.startswith('g++') or compiler.startswith('clang') or compiler.starts
 	else:
 		raise RuntimeError('Unknown build type: {}'.format(env['BUILD_TYPE']))
 
-	if GetOption('sanitize'):
-		env.Append(CPPFLAGS = ['-fsanitize=' + GetOption('sanitize')])
-		env.Append(LINKFLAGS = ['-fsanitize=' + GetOption('sanitize')])
+	if 'CLANG_SANITIZE' in env:
+		env.Append(CPPFLAGS = ['-fsanitize=$CLANG_SANITIZE'])
+		env.Append(LINKFLAGS = ['-fsanitize=$CLANG_SANITIZE'])
 elif compiler.startswith('cl'):
 	if env['BUILD_TYPE'] == 'Debug':
 		env.Append(CPPFLAGS = Split('-Zi -nologo -W4 -WX- -Od -Ob0 -Oy- -DWIN32 -D_WINDOWS -D_DEBUG -D_MBCS -Gm- -EHsc -RTC1 -MDd -GS -fp:precise -Zc:wchar_t -Zc:forScope -Zc:inline -GR -Gd -TP'))
