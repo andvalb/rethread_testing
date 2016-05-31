@@ -14,14 +14,47 @@ def buildGoogleTest(env):
 def find_executable(executable, env):
 	return distutils.spawn.find_executable(executable, env['ENV']['PATH'])
 
+def selectCMakeVSArch(env):
+	if env['TARGET_ARCH'] in ['x86', 'i386']:
+		return ''
+	elif env['TARGET_ARCH'] in ['amd64', 'x86_64']:
+		return ' Win64'
+	else:
+		raise RuntimeError('Unknown arch: {}'.format(env['TARGET_ARCH']))
+
+def selectCMakeVSGenerator(env):
+	if env['MSVS_VERSION'] == '14.0':
+		return 'Visual Studio 14 2015' + selectCMakeVSArch(env)
+	elif env['MSVS_VERSION'] == '12.0':
+		return 'Visual Studio 12 2013' + selectCMakeVSArch(env)
+	elif env['MSVS_VERSION'] == '11.0':
+		return 'Visual Studio 11 2012' + selectCMakeVSArch(env)
+	elif env['MSVS_VERSION'] == '10.0':
+		return 'Visual Studio 10 2010' + selectCMakeVSArch(env)
+	else:
+		raise RuntimeError('Unknown MSVS version: {}'.format(env['MSVS_VERSION']))
+
+def buildCMakeCommand(env, buildDir, sourceDir, installDir, buildTarget, buildType):
+	buildDirAbs = Dir(buildDir).abspath
+	sourceDirAbs = Dir(sourceDir).abspath
+	installDirAbs = Dir(installDir).abspath
+	if env['PLATFORM'] in ['posix']:
+		return 'cd "{buildDirAbs}" && cmake$PROGSUFFIX -DCMAKE_C_COMPILER="$CC" -DCMAKE_C_FLAGS="$CCFLAGS" -DCMAKE_CXX_COMPILER="$CXX" -DCMAKE_CXX_FLAGS="$CPPFLAGS" -DCMAKE_INSTALL_PREFIX="{installDirAbs}" "{sourceDirAbs}" && cmake$PROGSUFFIX --build . --target {buildTarget}'.format(**locals())
+	elif env['PLATFORM'] in ['win32']:
+		cmakeGenerator = selectCMakeVSGenerator(env)
+		return 'cd "{buildDirAbs}" && cmake$PROGSUFFIX -G"{cmakeGenerator}" -DCMAKE_C_FLAGS="$CCFLAGS" -DCMAKE_CXX_FLAGS="$CPPFLAGS" -DCMAKE_INSTALL_PREFIX="{installDirAbs}" "{sourceDirAbs}" && cmake$PROGSUFFIX --build . --target {buildTarget} --config {buildType}'.format(**locals())
+	else:
+		raise RuntimeError('Unknown platform: {}'.format(env['PLATFORM']))
+
 def buildGoogleBenchmark(env):
 	new_env = env.Clone(ENV = os.environ) # we need to pass all the environment variables to CMake
-	new_env['CC_ABSOLUTE'] = find_executable(new_env['CC'], new_env)
-	new_env['CXX_ABSOLUTE'] = find_executable(new_env['CXX'], new_env)
-	return new_env.Command(
+	result = [new_env.Command(
 		os.path.join(dependency_install_prefix, 'lib', new_env['LIBPREFIX'] + 'benchmark' + new_env['LIBSUFFIX']),
 		None, [Mkdir('build/thirdparty/benchmark'),
-			   'cd build/thirdparty/benchmark/ && cmake$PROGSUFFIX -DCMAKE_C_COMPILER="$CC_ABSOLUTE" -DCMAKE_C_FLAGS="$CCFLAGS" -DCMAKE_CXX_COMPILER="$CXX_ABSOLUTE" -DCMAKE_CXX_FLAGS="$CPPFLAGS" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=../../install/ ../../../thirdparty/benchmark/ && cmake$PROGSUFFIX --build . --target install'])
+		       buildCMakeCommand(new_env, '#/build/thirdparty/benchmark/', '#/thirdparty/benchmark/', '#/build/install/', 'install', new_env['BUILD_TYPE'])])]
+	if env['PLATFORM'] in ['win32']:
+		result += ['Shlwapi.lib']
+	return result
 
 # Build script options
 AddOption('--build-type', dest='build_type', default='Release', metavar='BUILD_TYPE', help='Build type = {Debug, Release, RelWithDebInfo}')
