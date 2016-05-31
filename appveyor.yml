@@ -7,6 +7,10 @@ environment:
   global:
     MSVC_DEFAULT_OPTIONS: ON
     PYTHON: "C:\\Python27"
+  matrix:
+    - BUILD_TYPE: "Debug"
+    - BUILD_TYPE: "Release"
+    - BUILD_TYPE: "RelWithDebInfo"
 
 install:
   - SET "PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
@@ -14,7 +18,5 @@ install:
   - git submodule update --init --recursive
 
 build_script:
-  - scons.py
-
-test_script:
-  - scons.py test
+  - scons.py BUILD_TYPE=%BUILD_TYPE% test
+  - if "%BUILD_TYPE%"=="Release" scons BUILD_TYPE=$BUILD_TYPE benchmark
