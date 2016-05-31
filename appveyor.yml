@@ -19,4 +19,4 @@ install:
 
 build_script:
   - scons.py BUILD_TYPE=%BUILD_TYPE% test
-  - if "%BUILD_TYPE%"=="Release" scons BUILD_TYPE=$BUILD_TYPE benchmark
+  - if "%BUILD_TYPE%"=="Release" scons BUILD_TYPE=%BUILD_TYPE% benchmark
