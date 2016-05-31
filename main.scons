@@ -32,6 +32,7 @@ AddOption('--analyze', dest='analyze', action='store_true', default=False, help=
 env_params = {}
 if GetOption('compiler'):
 	env_params['CXX'] = GetOption('compiler')
+env_params['BUILD_TYPE'] = GetOption('build_type')
 
 env = Environment(**env_params)
 
@@ -39,7 +40,6 @@ if GetOption('analyze'):
 	env['CC'] = os.getenv('CC')
 	env['CXX'] = os.getenv('CXX')
 	env['ENV'].update(x for x in os.environ.items() if x[0].startswith('CCC_'))
-
 
 env.Append(CPPPATH = ['#', '#/rethread', os.path.join(dependency_install_prefix, 'include')])
 env.Append(LIBPATH = [os.path.join(dependency_install_prefix, 'lib')])
@@ -54,14 +54,14 @@ if compiler.startswith('g++') or compiler.startswith('clang') or compiler.starts
 
 	add_forced_include = lambda env, include: env.Append(CPPFLAGS = ['-include', include])
 
-	if GetOption('build_type') == 'Debug':
+	if env['BUILD_TYPE'] == 'Debug':
 		env.Append(CPPFLAGS = Split('-ggdb -fno-omit-frame-pointer'))
-	elif GetOption('build_type') == 'Release':
+	elif env['BUILD_TYPE'] == 'Release':
 		env.Append(CPPFLAGS = Split('-O2'))
-	elif GetOption('build_type') == 'RelWithDebInfo':
+	elif env['BUILD_TYPE'] == 'RelWithDebInfo':
 		env.Append(CPPFLAGS = Split('-ggdb -fno-omit-frame-pointer -O2'))
 	else:
-		raise RuntimeError('Unknown build type: {}'.format(GetOption('build_type')))
+		raise RuntimeError('Unknown build type: {}'.format(env['BUILD_TYPE']))
 
 	if GetOption('sanitize'):
 		env.Append(CPPFLAGS = ['-fsanitize=' + GetOption('sanitize')])
