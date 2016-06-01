@@ -1,6 +1,6 @@
 #include <benchmark/benchmark.h>
 
-static void ConcurrentQueue(benchmark::State& state)
+static void concurrent_queue(benchmark::State& state)
 {
 	std::mutex m;
 	std::condition_variable empty_cond;
@@ -38,10 +38,10 @@ static void ConcurrentQueue(benchmark::State& state)
 
 	t.join();
 }
-BENCHMARK(ConcurrentQueue);
+BENCHMARK(concurrent_queue);
 
 
-static void CancellableConcurrentQueue(benchmark::State& state)
+static void cancellable_concurrent_queue(benchmark::State& state)
 {
 	std::mutex m;
 	std::condition_variable empty_cond;
@@ -78,10 +78,10 @@ static void CancellableConcurrentQueue(benchmark::State& state)
 
 	t.reset();
 }
-BENCHMARK(CancellableConcurrentQueue);
+BENCHMARK(cancellable_concurrent_queue);
 
 
-static void WaitMock(benchmark::State& state)
+static void cv_wait_baseline(benchmark::State& state)
 {
 	cv_mock cv;
 	mutex_mock m;
@@ -89,10 +89,10 @@ static void WaitMock(benchmark::State& state)
 	while (state.KeepRunning())
 		cv.wait(l);
 }
-BENCHMARK(WaitMock);
+BENCHMARK(cv_wait_baseline);
 
 
-static void CancellableWaitMock(benchmark::State& state)
+static void cv_wait(benchmark::State& state)
 {
 	cv_mock cv;
 	mutex_mock m;
@@ -105,10 +105,10 @@ static void CancellableWaitMock(benchmark::State& state)
 			rethread::wait(cv, l, token);
 	}
 }
-BENCHMARK(CancellableWaitMock);
+BENCHMARK(cv_wait);
 
 
-static void CancellableWaitMockNoinline(benchmark::State& state)
+static void cv_wait_noinline(benchmark::State& state)
 {
 	cv_mock_noinline cv;
 	mutex_mock m;
@@ -121,7 +121,7 @@ static void CancellableWaitMockNoinline(benchmark::State& state)
 			rethread::wait(cv, l, token);
 	}
 }
-BENCHMARK(CancellableWaitMockNoinline);
+BENCHMARK(cv_wait_noinline);
 
 
 BENCHMARK_MAIN()
