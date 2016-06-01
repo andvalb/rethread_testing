@@ -21,12 +21,9 @@ class cancellation_token_mock : public cancellation_token
 public:
 	MOCK_METHOD0(cancel, void());
 	MOCK_METHOD0(reset, void());
-	MOCK_CONST_METHOD0(is_cancelled, bool());
 
 	MOCK_CONST_METHOD1(do_sleep_for, void(const std::chrono::nanoseconds& duration));
 
-	MOCK_CONST_METHOD1(try_register_cancellation_handler, bool(cancellation_handler& handler));
-	MOCK_CONST_METHOD1(try_unregister_cancellation_handler, bool(cancellation_handler&));
 	MOCK_CONST_METHOD1(unregister_cancellation_handler, void(cancellation_handler&));
 };
 
@@ -45,52 +42,13 @@ using ::testing::_;
 
 TEST(cancellation_guard_test, basic)
 {
-	cancellation_token_mock token;
+	cancellation_token_atomic token;
 	cancellation_handler_mock handler;
 
-	EXPECT_CALL(token, try_register_cancellation_handler(_))
-		.WillOnce(Return(false));
+	token.cancel();
 
 	cancellation_guard guard(token, handler);
 	EXPECT_TRUE(guard.is_cancelled());
-}
-
-
-TEST(cancellation_guard_test, try_unregister)
-{
-	cancellation_token_mock token;
-	cancellation_handler_mock handler;
-
-	{
-		InSequence seq;
-		EXPECT_CALL(token, try_register_cancellation_handler(_))
-			.WillOnce(Return(true));
-		EXPECT_CALL(token, try_unregister_cancellation_handler(_))
-			.WillOnce(Return(true));
-	}
-
-	cancellation_guard guard(token, handler);
-	EXPECT_FALSE(guard.is_cancelled());
-}
-
-
-TEST(cancellation_guard_test, unregister)
-{
-	cancellation_token_mock token;
-	cancellation_handler_mock handler;
-
-	{
-		InSequence seq;
-		EXPECT_CALL(token, try_register_cancellation_handler(_))
-			.WillOnce(Return(true));
-		EXPECT_CALL(token, try_unregister_cancellation_handler(_))
-			.WillOnce(Return(false));
-		EXPECT_CALL(token, unregister_cancellation_handler(_))
-			.Times(1);
-	}
-
-	cancellation_guard guard(token, handler);
-	EXPECT_FALSE(guard.is_cancelled());
 }
 
 
