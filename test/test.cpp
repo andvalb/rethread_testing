@@ -239,6 +239,12 @@ TEST(cancellation_token, delay_test)
 }
 
 
+TEST(cancellation_token, dummy_copy_test)
+{
+	dummy_cancellation_token token;
+	dummy_cancellation_token copy(token); // dummy_cancellation_token should be copyable
+}
+
 int main(int argc, char** argv)
 {
 	// The following line must be executed to initialize Google Mock
