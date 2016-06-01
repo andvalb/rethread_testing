@@ -110,16 +110,11 @@ BENCHMARK(cv_wait);
 
 static void cv_wait_noinline(benchmark::State& state)
 {
-	cv_mock_noinline cv;
+	cv_mock cv;
 	mutex_mock m;
 	std::unique_lock<mutex_mock> l(m);
 	rethread::cancellation_token_atomic token;
-	while (state.KeepRunning())
-	{
-		constexpr size_t Count = 10;
-		for (size_t i = 0; i < Count; ++i)
-			rethread::wait(cv, l, token);
-	}
+	cv_wait_noinline_impl::impl(state, cv, l, token);
 }
 BENCHMARK(cv_wait_noinline);
 

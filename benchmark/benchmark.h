@@ -27,11 +27,10 @@ struct cv_mock
 };
 
 
-struct cv_mock_noinline
+struct cv_wait_noinline_impl
 {
-	// Defined in different translation unit to prevent virtual functions inlining
-	void notify_all();
-	void wait(std::unique_lock<mutex_mock>& l);
+	// Defined in different translation unit to prevent inlining of cancellation_token virtual functions
+	static void impl(benchmark::State& state, cv_mock& cv, std::unique_lock<mutex_mock>& l, const rethread::cancellation_token& t);
 };
 
 #endif

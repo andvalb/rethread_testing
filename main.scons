@@ -128,7 +128,7 @@ AlwaysBuild(test_execution)
 
 benchmark_env.Append(CPPDEFINES = 'RETHREAD_SUPPRESS_CHECKS')
 gbenchmark_lib = buildGoogleBenchmark(benchmark_env)
-benchmark_runner = benchmark_env.Program('benchmark_runner', ['benchmark/benchmark.cpp', 'benchmark/cv_mock_noinline.cpp'], LIBS = [gbenchmark_lib])
+benchmark_runner = benchmark_env.Program('benchmark_runner', ['benchmark/benchmark.cpp', 'benchmark/cv_wait_noinline_impl.cpp'], LIBS = [gbenchmark_lib])
 benchmark_env.Requires(benchmark_runner, gbenchmark_lib) # because includes need to be installed before building benchmarks
 benchmark_env.Default(benchmark_runner)
 
