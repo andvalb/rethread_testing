@@ -13,7 +13,7 @@ void cv_wait_noinline_impl::impl(benchmark::State& state, cv_mock& cv, std::uniq
 {
 	while (state.KeepRunning())
 	{
-		constexpr size_t Count = 10;
+		RETHREAD_CONSTEXPR size_t Count = 10;
 		for (size_t i = 0; i < Count; ++i)
 			rethread::wait(cv, l, t);
 	}
