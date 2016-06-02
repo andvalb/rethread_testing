@@ -17,7 +17,7 @@ def find_executable(executable, env):
 def selectCMakeVSArch(env):
 	if env['TARGET_ARCH'] in ['x86', 'i386']:
 		return ''
-	elif env['TARGET_ARCH'] in ['amd64', 'x86_64']:
+	elif env['TARGET_ARCH'] in ['amd64', 'x86_64', 'x86_amd64']:
 		return ' Win64'
 	else:
 		raise RuntimeError('Unknown arch: {}'.format(env['TARGET_ARCH']))
@@ -59,7 +59,8 @@ def buildGoogleBenchmark(env):
 vars = Variables(None, ARGUMENTS)
 vars.AddVariables(
 	EnumVariable('BUILD_TYPE', 'Build type', 'Release', allowed_values = ('Debug', 'Release', 'RelWithDebInfo')),
-	('CXX', 'C++ compiler'),
+	('CXX', 'C++ compiler (for Unix builds)'),
+	('MSVS_VERSION', 'MSVS version (for Windows builds)'),
 	('CLANG_SANITIZE', 'Clang sanitizer to use (thread|address|undefined|...)'),
 	BoolVariable('CLANG_ANALYZE', 'Allow static analyzer by passing some environment variables to compiler', False)
 )
