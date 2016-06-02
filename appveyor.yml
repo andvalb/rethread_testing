@@ -9,8 +9,17 @@ environment:
     PYTHON: "C:\\Python27"
   matrix:
     - BUILD_TYPE: "Debug"
+      MSVS_VERSION: "14.0"
     - BUILD_TYPE: "Release"
+      MSVS_VERSION: "14.0"
     - BUILD_TYPE: "RelWithDebInfo"
+      MSVS_VERSION: "14.0"
+    - BUILD_TYPE: "Debug"
+      MSVS_VERSION: "12.0"
+    - BUILD_TYPE: "Release"
+      MSVS_VERSION: "12.0"
+    - BUILD_TYPE: "RelWithDebInfo"
+      MSVS_VERSION: "12.0"
 
 install:
   - SET "PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
@@ -18,5 +27,5 @@ install:
   - git submodule update --init --recursive
 
 build_script:
-  - scons.py BUILD_TYPE=%BUILD_TYPE% test
-  - if "%BUILD_TYPE%"=="Release" scons BUILD_TYPE=%BUILD_TYPE% benchmark
+  - scons.py BUILD_TYPE=%BUILD_TYPE% MSVS_VERSION=%MSVS_VERSION% test
+  - if "%BUILD_TYPE%"=="Release" scons BUILD_TYPE=%BUILD_TYPE% MSVS_VERSION=%MSVS_VERSION% benchmark
