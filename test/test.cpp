@@ -51,7 +51,7 @@ using ::testing::_;
 
 TEST(cancellation_guard_test, basic)
 {
-	cancellation_token_atomic token;
+	standalone_cancellation_token token;
 	cancellation_handler_mock handler;
 
 	token.cancel();
@@ -63,7 +63,7 @@ TEST(cancellation_guard_test, basic)
 
 TEST(cancellation_token, handler_cancel_test)
 {
-	cancellation_token_atomic token;
+	standalone_cancellation_token token;
 	cancellation_handler_mock handler;
 
 	{
@@ -82,10 +82,10 @@ TEST(cancellation_token, handler_cancel_test)
 
 struct cancellation_token_fixture : public ::testing::Test
 {
-	std::mutex                _mutex;
-	std::condition_variable   _cv;
-	cancellation_token_atomic _token;
-	std::atomic<bool>         _finished_flag{false};
+	std::mutex                    _mutex;
+	std::condition_variable       _cv;
+	standalone_cancellation_token _token;
+	std::atomic<bool>             _finished_flag{false};
 };
 
 
@@ -183,7 +183,7 @@ TEST_F(cancellation_token_fixture, sleep_test)
 struct cancellation_delay_tester : cancellation_handler
 {
 	std::chrono::microseconds _check_delay;
-	cancellation_token_atomic _token;
+	standalone_cancellation_token _token;
 	std::thread               _thread;
 	std::atomic<bool>         _alive{true};
 
@@ -253,6 +253,7 @@ TEST(cancellation_token, dummy_copy_test)
 	dummy_cancellation_token token;
 	dummy_cancellation_token copy(token); // dummy_cancellation_token should be copyable
 }
+
 
 int main(int argc, char** argv)
 {

@@ -71,7 +71,7 @@ static void cancellable_concurrent_queue(benchmark::State& state)
 		              }
 	              });
 
-	rethread::cancellation_token_atomic token;
+	rethread::standalone_cancellation_token token;
 	std::unique_lock<std::mutex> l(m);
 	while (state.KeepRunning())
 	{
@@ -106,7 +106,7 @@ static void cv_wait(benchmark::State& state)
 	cv_mock cv;
 	mutex_mock m;
 	std::unique_lock<mutex_mock> l(m);
-	rethread::cancellation_token_atomic token;
+	rethread::standalone_cancellation_token token;
 	while (state.KeepRunning())
 	{
 		RETHREAD_CONSTEXPR size_t Count = 10;
@@ -122,7 +122,7 @@ static void cv_wait_noinline(benchmark::State& state)
 	cv_mock cv;
 	mutex_mock m;
 	std::unique_lock<mutex_mock> l(m);
-	rethread::cancellation_token_atomic token;
+	rethread::standalone_cancellation_token token;
 	cv_wait_noinline_impl::impl(state, cv, l, token);
 }
 BENCHMARK(cv_wait_noinline);
