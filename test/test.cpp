@@ -180,6 +180,38 @@ TEST_F(cancellation_token_fixture, sleep_test)
 }
 
 
+TEST(cancellation_token, source)
+{
+	std::mutex                m;
+	std::condition_variable   cv;
+	std::atomic<size_t>       finished_counter{0};
+	cancellation_token_source source;
+
+	auto thread_fun = [&](const cancellation_token& t)
+	{
+		std::unique_lock<std::mutex> l(m);
+		while (t)
+			wait(cv, l, t);
+		++finished_counter;
+	};
+
+	const size_t Count = 10;
+	std::vector<std::thread> v;
+	for (size_t i = 0; i < Count; ++i)
+		v.emplace_back(std::bind(thread_fun, source.create_token()));
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	EXPECT_EQ(finished_counter.load(), 0u);
+
+	source.cancel();
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	EXPECT_EQ(finished_counter.load(), Count);
+
+	std::for_each(begin(v), end(v), std::bind(&std::thread::join, std::placeholders::_1));
+}
+
+
 struct cancellation_delay_tester : cancellation_handler
 {
 	std::chrono::microseconds _check_delay;
