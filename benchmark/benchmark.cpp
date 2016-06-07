@@ -90,17 +90,6 @@ static void cancellable_concurrent_queue(benchmark::State& state)
 BENCHMARK(cancellable_concurrent_queue);
 
 
-static void cv_wait_baseline(benchmark::State& state)
-{
-	cv_mock cv;
-	mutex_mock m;
-	std::unique_lock<mutex_mock> l(m);
-	while (state.KeepRunning())
-		cv.wait(l);
-}
-BENCHMARK(cv_wait_baseline);
-
-
 static void cv_wait(benchmark::State& state)
 {
 	cv_mock cv;
