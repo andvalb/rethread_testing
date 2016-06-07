@@ -17,13 +17,23 @@
    fun:_ZNKSt6atomicIbE4loadESt12memory_order
 }
 {
-   GCC-4.8 atomic store
+   GCC-4.8 std::atomic<bool>::store
    Helgrind:Race
    fun:_ZNSt13__atomic_baseIbE5storeEbSt12memory_order
 }
 {
-   GCC-4.8 atomic load
+   GCC-4.8 std::atomic<rethread::cancellation_handler*>::store
+   Helgrind:Race
+   fun:_ZNSt13__atomic_baseIPN8rethread20cancellation_handlerEE5storeES2_St12memory_order
+}
+{
+   GCC-4.8 std::atomic<bool>::load
    Helgrind:Race
    fun:_ZNKSt13__atomic_baseIbE4loadESt12memory_order
+}
+{
+   GCC-4.8 std::atomic<rethread::cancellation_handler*>::load
+   Helgrind:Race
+   fun:_ZNSt13__atomic_baseIPN8rethread20cancellation_handlerEE4loadES2_St12memory_order
 }
 
