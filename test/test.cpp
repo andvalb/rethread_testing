@@ -251,71 +251,69 @@ TEST(cancellation_token, source)
 }
 
 
-struct cancellation_delay_tester : cancellation_handler
+struct cancellation_handler_dummy : cancellation_handler
 {
-	std::chrono::microseconds _check_delay;
-	standalone_cancellation_token _token;
-	std::thread               _thread;
-	std::atomic<bool>         _alive{true};
-
-	std::atomic<bool>         _cancelled{false};
-	std::atomic<bool>         _reset{false};
-	std::atomic<bool>         _guard_cancelled{false};
-
-	cancellation_delay_tester(std::chrono::microseconds checkDelay) :
-		_check_delay(checkDelay)
-	{ _thread = std::thread(std::bind(&cancellation_delay_tester::thread_func, this)); }
-
-	~cancellation_delay_tester()
-	{
-		EXPECT_FALSE(_guard_cancelled);
-		EXPECT_FALSE(_cancelled);
-		EXPECT_FALSE(_reset);
-
-		_token.cancel();
-		_alive = false;
-		_thread.join();
-
-		if (!_guard_cancelled)
-		{
-			EXPECT_TRUE(_cancelled);
-			EXPECT_TRUE(_reset);
-		}
-		else
-		{
-			EXPECT_FALSE(_cancelled);
-			EXPECT_FALSE(_reset);
-		}
-	}
+	std::atomic<bool> _cancelled{false};
+	std::atomic<bool> _reset{false};
 
 	void cancel() override
 	{ _cancelled = true; }
 
 	void reset() override
 	{ _reset = true; }
-
-	void thread_func()
-	{
-		std::this_thread::sleep_for(_check_delay);
-
-		cancellation_guard guard(_token, *this);
-		_guard_cancelled = guard.is_cancelled();
-
-		while (_alive)
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
-	}
 };
 
 
-TEST(cancellation_token, delay_test)
+void do_stress_test(std::chrono::nanoseconds delay1, std::chrono::nanoseconds delay2)
 {
-	const std::chrono::microseconds MaxDelay{100000};
-	const std::chrono::microseconds DelayStep{200};
-	for (std::chrono::microseconds delay{0}; delay < MaxDelay; delay += DelayStep)
+	standalone_cancellation_token token;
+	testing_flag                  started1;
+	testing_flag                  started2;
+
+	std::atomic<bool>          guard_cancelled{false};
+	cancellation_handler_dummy handler;
+
+	std::thread t([&] ()
 	{
-		cancellation_delay_tester t(delay);
-		std::this_thread::sleep_for(MaxDelay - delay);
+		started2.set();
+		started1.is_set(std::chrono::seconds(3));
+
+		std::this_thread::sleep_for(delay1);
+
+		cancellation_guard guard(token, handler);
+		guard_cancelled = guard.is_cancelled();
+
+		while (token)
+			std::this_thread::sleep_for(std::chrono::microseconds(20));
+	});
+
+	started1.set();
+	started2.is_set(std::chrono::seconds(3));
+
+	std::this_thread::sleep_for(delay2);
+
+	token.cancel();
+	t.join();
+
+	if (!guard_cancelled)
+	{
+		EXPECT_TRUE(handler._cancelled);
+		EXPECT_TRUE(handler._reset);
 	}
+	else
+	{
+		EXPECT_FALSE(handler._cancelled);
+		EXPECT_FALSE(handler._reset);
+	}
+}
+
+
+TEST(cancellation_token, stress_test)
+{
+	const std::chrono::nanoseconds MaxDelay{100000};
+	const std::chrono::nanoseconds DelayStep{200};
+	for (std::chrono::nanoseconds delay{0}; delay < MaxDelay; delay += DelayStep)
+		 do_stress_test(delay, MaxDelay - delay);
 }
 
 
