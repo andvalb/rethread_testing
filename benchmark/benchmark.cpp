@@ -117,4 +117,49 @@ static void cv_wait_noinline(benchmark::State& state)
 BENCHMARK(cv_wait_noinline);
 
 
+static void create_dummy_token(benchmark::State& state)
+{
+	while (state.KeepRunning())
+	{
+		rethread::dummy_cancellation_token token;
+		benchmark::DoNotOptimize(token);
+	}
+}
+BENCHMARK(create_dummy_token);
+
+
+static void create_standalone_token(benchmark::State& state)
+{
+	while (state.KeepRunning())
+	{
+		rethread::standalone_cancellation_token token;
+		benchmark::DoNotOptimize(token);
+	}
+}
+BENCHMARK(create_standalone_token);
+
+
+static void create_cancellation_token_source(benchmark::State& state)
+{
+	while (state.KeepRunning())
+	{
+		rethread::cancellation_token_source source;
+		benchmark::DoNotOptimize(source);
+	}
+}
+BENCHMARK(create_cancellation_token_source);
+
+
+static void create_sourced_cancellation_token(benchmark::State& state)
+{
+	rethread::cancellation_token_source source;
+	while (state.KeepRunning())
+	{
+		rethread::sourced_cancellation_token token(source.create_token());
+		benchmark::DoNotOptimize(token);
+	}
+}
+BENCHMARK(create_sourced_cancellation_token);
+
+
 BENCHMARK_MAIN()
