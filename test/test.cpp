@@ -80,12 +80,50 @@ TEST(cancellation_token, handler_cancel_test)
 }
 
 
+struct testing_flag
+{
+	bool                            _value{false};
+	mutable std::mutex              _mutex;
+	mutable std::condition_variable _cv;
+
+	void set()
+	{
+		std::unique_lock<std::mutex> l(_mutex);
+		if (_value)
+			return;
+
+		_value = true;
+		_cv.notify_all();
+	}
+
+	bool is_set() const
+	{
+		std::unique_lock<std::mutex> l(_mutex);
+		return _value;
+	}
+
+	template <typename Duration_>
+	bool is_set(const Duration_& duration) const
+	{
+		std::unique_lock<std::mutex> l(_mutex);
+		auto end_time = std::chrono::steady_clock::now() + duration;
+		while (!_value)
+		{
+			if (_cv.wait_until(l, end_time) == std::cv_status::timeout)
+				return false;
+		}
+		return true;
+	}
+};
+
 struct cancellation_token_fixture : public ::testing::Test
 {
 	std::mutex                    _mutex;
 	std::condition_variable       _cv;
 	standalone_cancellation_token _token;
-	std::atomic<bool>             _finished_flag{false};
+
+	testing_flag                  _started;
+	testing_flag                  _finished;
 };
 
 
@@ -95,15 +133,14 @@ TEST_F(cancellation_token_fixture, basic_thread_test)
 	{
 		while (_token)
 			std::this_thread::sleep_for(std::chrono::milliseconds(20));
-		_finished_flag = true;
+		_finished.set();
 	});
 
-	EXPECT_FALSE(_finished_flag);
+	EXPECT_FALSE(_finished.is_set());
 
 	_token.cancel();
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(50));
-	EXPECT_TRUE(_finished_flag);
+	EXPECT_TRUE(_finished.is_set(std::chrono::seconds(3)));
 
 	t.join();
 }
@@ -115,12 +152,12 @@ TEST_F(cancellation_token_fixture, thread_reset_test)
 	{
 		while (t)
 			std::this_thread::sleep_for(std::chrono::milliseconds(20));
-		_finished_flag = true;
+		_finished.set();
 	});
 
-	EXPECT_FALSE(_finished_flag);
+	EXPECT_FALSE(_finished.is_set());
 	t.reset();
-	EXPECT_TRUE(_finished_flag);
+	EXPECT_TRUE(_finished.is_set());
 }
 
 
@@ -131,12 +168,12 @@ TEST_F(cancellation_token_fixture, thread_dtor_test)
 		{
 			while (t)
 				std::this_thread::sleep_for(std::chrono::milliseconds(20));
-			_finished_flag = true;
+			_finished.set();
 		});
 
-		EXPECT_FALSE(_finished_flag);
+		EXPECT_FALSE(_finished.is_set());
 	}
-	EXPECT_TRUE(_finished_flag);
+	EXPECT_TRUE(_finished.is_set());
 }
 
 
@@ -146,17 +183,18 @@ TEST_F(cancellation_token_fixture, cv_test)
 	{
 		std::unique_lock<std::mutex> l(_mutex);
 		while (_token)
+		{
+			_started.set();
 			wait(_cv, l, _token);
-		_finished_flag = true;
+		}
+		_finished.set();
 	});
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(50));
-	EXPECT_FALSE(_finished_flag);
+	EXPECT_TRUE(_started.is_set(std::chrono::seconds(3)));
 
 	_token.cancel();
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(50));
-	EXPECT_TRUE(_finished_flag);
+	EXPECT_TRUE(_finished.is_set(std::chrono::seconds(3)));
 }
 
 
@@ -166,17 +204,18 @@ TEST_F(cancellation_token_fixture, sleep_test)
 	{
 		std::unique_lock<std::mutex> l(_mutex);
 		while (_token)
+		{
+			_started.set();
 			rethread::this_thread::sleep_for(std::chrono::minutes(1), _token);
-		_finished_flag = true;
+		}
+		_finished.set();
 	});
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(50));
-	EXPECT_FALSE(_finished_flag);
+	EXPECT_TRUE(_started.is_set(std::chrono::seconds(3)));
 
 	_token.cancel();
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(50));
-	EXPECT_TRUE(_finished_flag);
+	EXPECT_TRUE(_finished.is_set(std::chrono::seconds(3)));
 }
 
 
