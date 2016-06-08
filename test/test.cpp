@@ -271,9 +271,9 @@ struct cancellation_handler_dummy : cancellation_handler
 };
 
 
-void do_stress_test(std::chrono::nanoseconds delay1, std::chrono::nanoseconds delay2)
+template <typename CancelFunctor_>
+void do_stress_test(std::chrono::nanoseconds delay1, std::chrono::nanoseconds delay2, const cancellation_token& token, const CancelFunctor_& cancel)
 {
-	standalone_cancellation_token token;
 	testing_flag                  started1;
 	testing_flag                  started2;
 
@@ -299,7 +299,7 @@ void do_stress_test(std::chrono::nanoseconds delay1, std::chrono::nanoseconds de
 
 	std::this_thread::sleep_for(delay2);
 
-	token.cancel();
+	cancel();
 	t.join();
 
 	if (!guard_cancelled)
@@ -315,12 +315,28 @@ void do_stress_test(std::chrono::nanoseconds delay1, std::chrono::nanoseconds de
 }
 
 
-TEST(cancellation_token, stress_test)
+TEST(cancellation_token, stress_test_standalone)
 {
-	const std::chrono::nanoseconds MaxDelay{100000};
-	const std::chrono::nanoseconds DelayStep{200};
+	const std::chrono::nanoseconds MaxDelay{10000};
+	const std::chrono::nanoseconds DelayStep{10};
 	for (std::chrono::nanoseconds delay{0}; delay < MaxDelay; delay += DelayStep)
-		 do_stress_test(delay, MaxDelay - delay);
+	{
+		standalone_cancellation_token token;
+		do_stress_test(delay, MaxDelay - delay, token, std::bind(&standalone_cancellation_token::cancel, &token));
+	}
+}
+
+
+TEST(cancellation_token, stress_test_sourced)
+{
+	const std::chrono::nanoseconds MaxDelay{10000};
+	const std::chrono::nanoseconds DelayStep{10};
+	for (std::chrono::nanoseconds delay{0}; delay < MaxDelay; delay += DelayStep)
+	{
+		cancellation_token_source source;
+		sourced_cancellation_token token(source.create_token());
+		do_stress_test(delay, MaxDelay - delay, token, std::bind(&cancellation_token_source::cancel, &source));
+	}
 }
 
 
