@@ -117,6 +117,45 @@ static void cv_wait_noinline(benchmark::State& state)
 BENCHMARK(cv_wait_noinline);
 
 
+static void atomic_exchange(benchmark::State& state)
+{
+	std::atomic<int*> a{nullptr};
+	int *value = (int*)1;
+	while (state.KeepRunning())
+	{
+		RETHREAD_CONSTEXPR size_t Count = 5;
+		for (size_t i = 0; i < Count; ++i)
+		{
+			value = a.exchange(value, std::memory_order_release);
+			value = a.exchange(value, std::memory_order_acquire);
+		}
+	}
+}
+BENCHMARK(atomic_exchange);
+
+
+static void atomic_compare_exchange(benchmark::State& state)
+{
+	std::atomic<int*> a{nullptr};
+	int *value1 = nullptr;
+	int *value2 = (int*)1;
+	while (state.KeepRunning())
+	{
+		RETHREAD_CONSTEXPR size_t Count = 5;
+		for (size_t i = 0; i < Count; ++i)
+		{
+			int* val = value1;
+			while (!a.compare_exchange_weak(val, value2, std::memory_order_release, std::memory_order_relaxed))
+				;
+			val = value2;
+			while (!a.compare_exchange_weak(val, value1, std::memory_order_acquire, std::memory_order_relaxed))
+				;
+		}
+	}
+}
+BENCHMARK(atomic_compare_exchange);
+
+
 static void create_dummy_token(benchmark::State& state)
 {
 	while (state.KeepRunning())
