@@ -146,6 +146,13 @@ TEST_F(cancellation_token_fixture, basic_thread_test)
 }
 
 
+TEST(thread, default_ctor_and_reset)
+{
+	rethread::thread t;
+	t.reset();
+}
+
+
 TEST_F(cancellation_token_fixture, thread_reset_test)
 {
 	rethread::thread t([this] (const cancellation_token& t)
