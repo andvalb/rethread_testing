@@ -322,7 +322,7 @@ TEST(cancellation_token, stress_test_standalone)
 	for (std::chrono::nanoseconds delay{0}; delay < MaxDelay; delay += DelayStep)
 	{
 		standalone_cancellation_token token;
-		do_stress_test(delay, MaxDelay - delay, token, std::bind(&standalone_cancellation_token::cancel, &token));
+		do_stress_test(delay, MaxDelay - delay, token, [&token] { token.cancel(); });
 	}
 }
 
@@ -335,7 +335,7 @@ TEST(cancellation_token, stress_test_sourced)
 	{
 		cancellation_token_source source;
 		sourced_cancellation_token token(source.create_token());
-		do_stress_test(delay, MaxDelay - delay, token, std::bind(&cancellation_token_source::cancel, &source));
+		do_stress_test(delay, MaxDelay - delay, token, [&source] { source.cancel(); });
 	}
 }
 
