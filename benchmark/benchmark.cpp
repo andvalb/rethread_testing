@@ -156,6 +156,22 @@ static void atomic_compare_exchange(benchmark::State& state)
 BENCHMARK(atomic_compare_exchange);
 
 
+static void atomic_fetch_add(benchmark::State& state)
+{
+	std::atomic<int*> a{nullptr};
+	while (state.KeepRunning())
+	{
+		RETHREAD_CONSTEXPR size_t Count = 5;
+		for (size_t i = 0; i < Count; ++i)
+		{
+			a.fetch_add(123, std::memory_order_release);
+			a.fetch_sub(123, std::memory_order_acquire);
+		}
+	}
+}
+BENCHMARK(atomic_fetch_add);
+
+
 static void create_dummy_token(benchmark::State& state)
 {
 	while (state.KeepRunning())
