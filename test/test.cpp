@@ -347,6 +347,61 @@ TEST(cancellation_token, dummy_copy_test)
 }
 
 
+TEST(chain_cancellation_tokens, standalone)
+{
+	standalone_cancellation_token token1;
+	standalone_cancellation_token token2;
+	chain_cancellation_tokens chain(token1, token2);
+	cancellation_handler_mock handler;
+
+	{
+		InSequence seq;
+		EXPECT_CALL(handler, cancel()).Times(1);
+		EXPECT_CALL(handler, reset()).Times(1);
+	}
+
+	cancellation_guard guard(token2, handler);
+
+	EXPECT_TRUE(token1);
+	EXPECT_TRUE(token2);
+	EXPECT_FALSE(guard.is_cancelled());
+
+	token1.cancel();
+
+	EXPECT_FALSE(token1);
+	EXPECT_FALSE(token2);
+}
+
+
+TEST(chain_cancellation_tokens, source)
+{
+	standalone_cancellation_token token1;
+	cancellation_token_source source;
+	sourced_cancellation_token token2(source.create_token());
+	chain_cancellation_tokens chain(token1, source);
+
+	cancellation_handler_mock handler;
+
+	{
+		InSequence seq;
+
+		EXPECT_CALL(handler, cancel()).Times(1);
+		EXPECT_CALL(handler, reset()).Times(1);
+	}
+
+	cancellation_guard guard(token2, handler);
+
+	EXPECT_TRUE(token1);
+	EXPECT_TRUE(token2);
+	EXPECT_FALSE(guard.is_cancelled());
+
+	token1.cancel();
+
+	EXPECT_FALSE(token1);
+	EXPECT_FALSE(token2);
+}
+
+
 int main(int argc, char** argv)
 {
 	// The following line must be executed to initialize Google Mock
