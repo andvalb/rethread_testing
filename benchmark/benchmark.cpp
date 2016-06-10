@@ -113,6 +113,31 @@ static void cv_wait_noinline(benchmark::State& state)
 BENCHMARK(cv_wait_noinline);
 
 
+static void cv_wait_sourced(benchmark::State& state)
+{
+	cv_mock cv;
+	mutex_mock m;
+	std::unique_lock<mutex_mock> l(m);
+	rethread::cancellation_token_source source;
+	rethread::sourced_cancellation_token token(source.create_token());
+	while (state.KeepRunning())
+		rethread::wait(cv, l, token);
+}
+BENCHMARK(cv_wait_sourced);
+
+
+static void cv_wait_dummy(benchmark::State& state)
+{
+	cv_mock cv;
+	mutex_mock m;
+	std::unique_lock<mutex_mock> l(m);
+	rethread::dummy_cancellation_token token;
+	while (state.KeepRunning())
+		rethread::wait(cv, l, token);
+}
+BENCHMARK(cv_wait_dummy);
+
+
 static void atomic_exchange(benchmark::State& state)
 {
 	std::atomic<int*> a{nullptr};
