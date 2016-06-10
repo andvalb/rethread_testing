@@ -97,11 +97,7 @@ static void cv_wait(benchmark::State& state)
 	std::unique_lock<mutex_mock> l(m);
 	rethread::standalone_cancellation_token token;
 	while (state.KeepRunning())
-	{
-		RETHREAD_CONSTEXPR size_t Count = 10;
-		for (size_t i = 0; i < Count; ++i)
-			rethread::wait(cv, l, token);
-	}
+		rethread::wait(cv, l, token);
 }
 BENCHMARK(cv_wait);
 
