@@ -220,7 +220,10 @@ TEST_F(cancellation_token_fixture, cv_predicate_test)
 	EXPECT_TRUE(_started.is_set(std::chrono::seconds(3)));
 
 	for (int i = 0; i < 10; ++i)
+	{
+		std::unique_lock<std::mutex> l(_mutex);
 		_cv.notify_all();
+	}
 
 	EXPECT_FALSE(_finished.is_set());
 
@@ -251,7 +254,10 @@ TEST_F(cancellation_token_fixture, cv_predicate_cancel)
 	EXPECT_TRUE(_started.is_set(std::chrono::seconds(3)));
 
 	for (int i = 0; i < 10; ++i)
+	{
+		std::unique_lock<std::mutex> l(_mutex);
 		_cv.notify_all();
+	}
 
 	EXPECT_FALSE(_finished.is_set());
 
