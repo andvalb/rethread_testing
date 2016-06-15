@@ -1,4 +1,11 @@
 {
+   Missing shared ptr annotation within libstdc++
+   Helgrind:Race
+   ...
+   fun:_ZNSt10shared_ptrINSt6thread10_Impl_baseEED1Ev
+   ...
+}
+{
    GCC atomic store builtin is considered non-atomic by helgrind :(
    Helgrind:Race
    fun:store
