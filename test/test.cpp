@@ -205,6 +205,85 @@ TEST_F(cancellation_token_fixture, cv_test)
 }
 
 
+TEST_F(cancellation_token_fixture, cv_predicate_test)
+{
+	bool flag = false;
+	bool result = false;
+	rethread::thread t([this, &flag, &result] (const cancellation_token&)
+	{
+	   std::unique_lock<std::mutex> l(_mutex);
+	   _started.set();
+	   result = wait(_cv, l, _token, [&flag] { return flag; });
+	   _finished.set();
+	});
+
+	EXPECT_TRUE(_started.is_set(std::chrono::seconds(3)));
+
+	for (int i = 0; i < 10; ++i)
+		_cv.notify_all();
+
+	EXPECT_FALSE(_finished.is_set());
+
+	std::unique_lock<std::mutex> l(_mutex);
+	flag = true;
+	_cv.notify_all();
+	l.unlock();
+
+	EXPECT_TRUE(_finished.is_set(std::chrono::seconds(3)));
+
+	l.lock();
+	EXPECT_TRUE(result);
+}
+
+
+TEST_F(cancellation_token_fixture, cv_predicate_cancel)
+{
+	bool flag = false;
+	bool result = false;
+	rethread::thread t([this, &flag, &result] (const cancellation_token&)
+	{
+	   std::unique_lock<std::mutex> l(_mutex);
+	   _started.set();
+	   result = wait(_cv, l, _token, [&flag] { return flag; });
+	   _finished.set();
+	});
+
+	EXPECT_TRUE(_started.is_set(std::chrono::seconds(3)));
+
+	for (int i = 0; i < 10; ++i)
+		_cv.notify_all();
+
+	EXPECT_FALSE(_finished.is_set());
+
+	_token.cancel();
+
+	EXPECT_TRUE(_finished.is_set(std::chrono::seconds(3)));
+
+	std::unique_lock<std::mutex> l(_mutex);
+	EXPECT_FALSE(result);
+}
+
+
+TEST_F(cancellation_token_fixture, cv_predicate_nowait)
+{
+	bool flag = true;
+	bool result = false;
+	rethread::thread t([this, &flag, &result] (const cancellation_token&)
+	{
+	   std::unique_lock<std::mutex> l(_mutex);
+	   _started.set();
+	   result = wait(_cv, l, _token, [&flag] { return flag; });
+	   _finished.set();
+	});
+
+	EXPECT_TRUE(_started.is_set(std::chrono::seconds(3)));
+	EXPECT_TRUE(_finished.is_set(std::chrono::seconds(3)));
+
+	std::unique_lock<std::mutex> l(_mutex);
+	EXPECT_TRUE(result);
+}
+
+
 TEST_F(cancellation_token_fixture, sleep_test)
 {
 	rethread::thread t([this] (const cancellation_token&)
