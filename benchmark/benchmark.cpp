@@ -138,6 +138,15 @@ static void cv_wait_dummy(benchmark::State& state)
 BENCHMARK(cv_wait_dummy);
 
 
+static void is_cancelled(benchmark::State& state)
+{
+	rethread::standalone_cancellation_token token;
+	while (state.KeepRunning())
+		benchmark::DoNotOptimize(token.is_cancelled());
+}
+BENCHMARK(is_cancelled);
+
+
 static void atomic_exchange(benchmark::State& state)
 {
 	std::atomic<int*> a{nullptr};
