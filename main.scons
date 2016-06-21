@@ -111,6 +111,7 @@ else:
 	raise RuntimeError('Unknown compiler: {}'.format(compiler))
 
 benchmark_env = env.Clone()
+benchmark_env.Replace(CPPFLAGS = [f for f in benchmark_env['CPPFLAGS'] if f != '-WX'])
 
 conf = Configure(env)
 if conf.CheckHeader('valgrind/helgrind.h'):
