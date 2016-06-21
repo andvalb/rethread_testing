@@ -269,8 +269,8 @@ static void create_standalone_token(benchmark::State& state)
 			benchmark::DoNotOptimize(&storage.emplace_back());
 		}
 	}
-	catch (const std::bad_alloc& ex)
-	{ return; }
+	catch (const std::exception& ex)
+	{ state.SkipWithError(ex.what()); }
 }
 BENCHMARK(create_standalone_token)->Arg(CreationBatchSize);
 
@@ -295,8 +295,8 @@ static void create_cancellation_token_source(benchmark::State& state)
 			benchmark::DoNotOptimize(&storage.emplace_back());
 		}
 	}
-	catch (const std::bad_alloc& ex)
-	{ return; }
+	catch (const std::exception& ex)
+	{ state.SkipWithError(ex.what()); }
 }
 BENCHMARK(create_cancellation_token_source)->Arg(CreationBatchSize);
 
@@ -322,8 +322,8 @@ static void create_sourced_cancellation_token(benchmark::State& state)
 			benchmark::DoNotOptimize(&storage.emplace_back(source.create_token()));
 		}
 	}
-	catch (const std::bad_alloc& ex)
-	{ return; }
+	catch (const std::exception& ex)
+	{ state.SkipWithError(ex.what()); }
 }
 BENCHMARK(create_sourced_cancellation_token)->Arg(CreationBatchSize);
 
