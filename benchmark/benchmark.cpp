@@ -21,7 +21,7 @@ static void old_concurrent_queue(benchmark::State& state)
 		std::unique_lock<std::mutex> l(m);
 		while (!done)
 		{
-			while (has_object)
+			if (has_object)
 			{
 				full_cond.wait(l);
 				continue;
@@ -57,19 +57,19 @@ static void cancellable_concurrent_queue(benchmark::State& state)
 	std::condition_variable full_cond;
 	bool has_object = false;
 	rethread::thread t([&] (const rethread::cancellation_token& t)
-	              {
-		              std::unique_lock<std::mutex> l(m);
-		              while (t)
-		              {
-			              while (t && has_object)
-			              {
-				              rethread::wait(full_cond, l, t);
-				              continue;
-			              }
-			              has_object = true;
-			              empty_cond.notify_all();
-		              }
-	              });
+	{
+		std::unique_lock<std::mutex> l(m);
+		while (t)
+		{
+			if (has_object)
+			{
+				rethread::wait(full_cond, l, t);
+				continue;
+			}
+			has_object = true;
+			empty_cond.notify_all();
+		}
+	});
 
 	rethread::standalone_cancellation_token token;
 	std::unique_lock<std::mutex> l(m);
