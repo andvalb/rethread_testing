@@ -205,7 +205,7 @@ BENCHMARK(atomic_fetch_add);
 template <typename T>
 class testing_storage
 {
-	using storage_type = typename std::aligned_storage<sizeof(T), alignof(T)>::type;
+	using storage_type = typename std::aligned_storage<sizeof(T), RETHREAD_ALIGNOF(T)>::type;
 
 	storage_type* _storage{nullptr};
 	size_t        _storageSize{0};
