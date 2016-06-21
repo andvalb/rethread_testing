@@ -9,7 +9,7 @@
 
 #include <benchmark/benchmark.h>
 
-static void concurrent_queue(benchmark::State& state)
+static void old_concurrent_queue(benchmark::State& state)
 {
 	std::mutex m;
 	std::condition_variable empty_cond;
@@ -47,7 +47,7 @@ static void concurrent_queue(benchmark::State& state)
 
 	t.join();
 }
-BENCHMARK(concurrent_queue);
+BENCHMARK(old_concurrent_queue);
 
 
 static void cancellable_concurrent_queue(benchmark::State& state)
@@ -90,7 +90,7 @@ static void cancellable_concurrent_queue(benchmark::State& state)
 BENCHMARK(cancellable_concurrent_queue);
 
 
-static void cv_wait(benchmark::State& state)
+static void cv_wait_standalone(benchmark::State& state)
 {
 	cv_mock cv;
 	mutex_mock m;
@@ -99,7 +99,7 @@ static void cv_wait(benchmark::State& state)
 	while (state.KeepRunning())
 		rethread::wait(cv, l, token);
 }
-BENCHMARK(cv_wait);
+BENCHMARK(cv_wait_standalone);
 
 
 static void cv_wait_noinline(benchmark::State& state)
