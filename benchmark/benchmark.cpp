@@ -202,49 +202,130 @@ static void atomic_fetch_add(benchmark::State& state)
 BENCHMARK(atomic_fetch_add);
 
 
-static void create_dummy_token(benchmark::State& state)
+template <typename T>
+class testing_storage
 {
-	while (state.KeepRunning())
+	using storage_type = typename std::aligned_storage<sizeof(T), alignof(T)>::type;
+
+	storage_type* _storage{nullptr};
+	size_t        _storageSize{0};
+	size_t        _size{0};
+
+public:
+	testing_storage(size_t storageSize) :
+		_storage(new storage_type[storageSize]), _storageSize(storageSize)
+	{ }
+
+	testing_storage(const testing_storage&) = delete;
+	testing_storage& operator =(const testing_storage&) = delete;
+
+	~testing_storage()
 	{
-		rethread::dummy_cancellation_token token;
-		benchmark::DoNotOptimize(token);
+		clear();
+		delete[] _storage;
 	}
-}
-BENCHMARK(create_dummy_token);
+
+	void clear()
+	{
+		for(size_t i = 0; i < _size; ++i)
+			reinterpret_cast<T*>(_storage + i)->~T();
+		_size = 0;
+	}
+
+	template <typename... Args_>
+	T& emplace_back(Args_&&... args)
+	{
+		RETHREAD_ASSERT(_size < _storageSize, "Overflow!");
+		new(_storage + _size) T(std::forward<Args_>(args)...);
+		++_size;
+		return *reinterpret_cast<T*>(_storage + _size - 1);
+	}
+
+	size_t size() const
+	{ return _size; }
+};
+
+
+static RETHREAD_CONSTEXPR size_t CreationBatchSize = 1000000;
 
 
 static void create_standalone_token(benchmark::State& state)
 {
-	while (state.KeepRunning())
+	try
 	{
-		rethread::standalone_cancellation_token token;
-		benchmark::DoNotOptimize(token);
+		size_t BatchSize = state.range_x();
+		using token_type = rethread::standalone_cancellation_token;
+		using storage_type = testing_storage<token_type>;
+		storage_type storage(BatchSize);
+		while (state.KeepRunning())
+		{
+			if (RETHREAD_UNLIKELY(storage.size() == BatchSize))
+			{
+				state.PauseTiming();
+				storage.clear();
+				state.ResumeTiming();
+			}
+
+			benchmark::DoNotOptimize(&storage.emplace_back());
+		}
 	}
+	catch (const std::bad_alloc& ex)
+	{ return; }
 }
-BENCHMARK(create_standalone_token);
+BENCHMARK(create_standalone_token)->Arg(CreationBatchSize);
 
 
 static void create_cancellation_token_source(benchmark::State& state)
 {
-	while (state.KeepRunning())
+	try
 	{
-		rethread::cancellation_token_source source;
-		benchmark::DoNotOptimize(source);
+		size_t BatchSize = state.range_x();
+		using token_type = rethread::cancellation_token_source;
+		using storage_type = testing_storage<token_type>;
+		storage_type storage(BatchSize);
+		while (state.KeepRunning())
+		{
+			if (RETHREAD_UNLIKELY(storage.size() == BatchSize))
+			{
+				state.PauseTiming();
+				storage.clear();
+				state.ResumeTiming();
+			}
+
+			benchmark::DoNotOptimize(&storage.emplace_back());
+		}
 	}
+	catch (const std::bad_alloc& ex)
+	{ return; }
 }
-BENCHMARK(create_cancellation_token_source);
+BENCHMARK(create_cancellation_token_source)->Arg(CreationBatchSize);
 
 
 static void create_sourced_cancellation_token(benchmark::State& state)
 {
-	rethread::cancellation_token_source source;
-	while (state.KeepRunning())
+	try
 	{
-		rethread::sourced_cancellation_token token(source.create_token());
-		benchmark::DoNotOptimize(token);
+		size_t BatchSize = state.range_x();
+		using token_type = rethread::sourced_cancellation_token;
+		using storage_type = testing_storage<token_type>;
+		storage_type storage(BatchSize);
+		rethread::cancellation_token_source source;
+		while (state.KeepRunning())
+		{
+			if (RETHREAD_UNLIKELY(storage.size() == BatchSize))
+			{
+				state.PauseTiming();
+				storage.clear();
+				state.ResumeTiming();
+			}
+
+			benchmark::DoNotOptimize(&storage.emplace_back(source.create_token()));
+		}
 	}
+	catch (const std::bad_alloc& ex)
+	{ return; }
 }
-BENCHMARK(create_sourced_cancellation_token);
+BENCHMARK(create_sourced_cancellation_token)->Arg(CreationBatchSize);
 
 
 BENCHMARK_MAIN()
